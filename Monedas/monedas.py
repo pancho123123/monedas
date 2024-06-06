@@ -1,6 +1,5 @@
 import pygame, random
 from random import randint
-from pathlib import Path
 
 WIDTH = 800
 HEIGHT = 550
@@ -13,8 +12,6 @@ pygame.mixer.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Monedas")
 clock = pygame.time.Clock()
-current_path = Path.cwd()
-file_path = current_path / 'highscore.txt'
 
 def draw_text(surface, text, size, x, y):
 	font = pygame.font.SysFont("serif", size)
@@ -23,8 +20,8 @@ def draw_text(surface, text, size, x, y):
 	text_rect.midtop = (x, y)
 	surface.blit(text_surface, text_rect)
 
-def draw_shield_bar(surface, x, y, percentage):
-	BAR_LENGHT = 100
+def draw_hp_bar(surface, x, y, percentage):
+	BAR_LENGHT = 80
 	BAR_HEIGHT = 10
 	fill = (percentage / 100) * BAR_LENGHT
 	border = pygame.Rect(x, y, BAR_LENGHT, BAR_HEIGHT)
@@ -41,13 +38,15 @@ class Player(pygame.sprite.Sprite):
 		self.rect.centerx = WIDTH // 2
 		self.rect.bottom = HEIGHT - 10
 		self.speed_x = 0
-		self.shield = 100
+		self.hp = 100
 		self.jumping = False
 		self.Y_GRAVITY = 1
 		self.JUMP_HEIGHT = 20
 		self.Y_VELOCITY = self.JUMP_HEIGHT
 
 	def update(self):
+		if player.hp > 100:
+			player.hp = 100
 		self.speed_x = 0
 		keystate = pygame.key.get_pressed()
 		if keystate[pygame.K_a]:
@@ -65,7 +64,7 @@ class Player(pygame.sprite.Sprite):
 class Coins(pygame.sprite.Sprite):
 	def __init__(self):
 		super().__init__()
-		self.image = coins_images[0]
+		self.image = pygame.image.load("img/mon.png").convert()
 		self.image.set_colorkey(WHITE)
 		self.rect = self.image.get_rect()
 		self.rect.x = random.randrange(WIDTH - self.rect.width)
@@ -75,7 +74,6 @@ class Coins(pygame.sprite.Sprite):
 
 	def update(self):
 		self.rect.y += self.speedy
-		#self.rect.x += self.speedx
 		if self.rect.top > HEIGHT + 10:
 			self.rect.x = random.randrange(WIDTH - self.rect.width)
 			self.rect.y = random.randrange(-150, - 100)
@@ -90,24 +88,44 @@ class Diam(pygame.sprite.Sprite):
 		self.rect.x = random.randrange(WIDTH - self.rect.width)
 		self.rect.y = random.randrange(-150, -100)
 		self.speedy = random.randrange(1, 10)
-		self.speedx = 0
 
 	def update(self):
 		self.rect.y += self.speedy
-		#self.rect.x += self.speedx
 		if self.rect.top > HEIGHT + 20:
 			self.rect.x = random.randrange(WIDTH - self.rect.width)
 			self.rect.y = random.randrange(-150, - 100)
 			self.speedy = random.randrange(1, 10)
+
+class Snake(pygame.sprite.Sprite):
+	def __init__(self):
+		super().__init__()
+		self.image = pygame.transform.scale(pygame.image.load("img/snake.png"),(100,50)).convert()
+		self.image.set_colorkey(WHITE)
+		self.rect = self.image.get_rect()
+		self.rect.x = WIDTH
+		self.rect.y = random.randrange(500,520)
+		self.speedx = random.randrange(-7, -3)
+		self.speedy = 0
+
+	def update(self):
+		self.rect.x += self.speedx
+		if self.rect.right < 0:
+			self.rect.x = WIDTH
+			self.rect.y = random.randrange(500,520)
+			self.speedx = random.randrange(-5,-3)
+
+### high score
+with open("data.txt", mode="r") as file:
+	high_score = int(file.read())
 
 def show_go_screen():
 	
 	screen.blit(background, [0,0])
 	draw_text(screen, "Monedas", 65, WIDTH // 2, HEIGHT // 4)
 	draw_text(screen, "Colecta las monedas", 20, WIDTH // 2, HEIGHT // 2)
+	draw_text(screen, "high_score: " + str(high_score), 20, WIDTH // 2, HEIGHT*3//5)
 	draw_text(screen, "Press Q", 20, WIDTH // 2, HEIGHT * 3/4)
 	draw_text(screen, "Created by: Francisco Carvajal", 10,  60, 500)
-	
 	
 	pygame.display.flip()
 	waiting = True
@@ -120,29 +138,23 @@ def show_go_screen():
 				if event.key == pygame.K_q:
 					waiting = False
 
-coins_images = []
-coins_list = ["img/mon.png"]
-for img in coins_list:
-	coins_images.append(pygame.image.load(img).convert())
-
 diam_images = []
 diam_list = ["img/diam.png", "img/diam2.png",]
 for img in diam_list:
 	diam_images.append(pygame.image.load(img).convert())
 
-def get_high_score():
-	with open(file_path,'r') as file:
-		return file.read()
 
 def show_game_over_screen():
 	screen.blit(background, [0,0])
-	if highest_score <= score:
-		draw_text(screen, "¡high score!", 60, WIDTH  // 2, HEIGHT * 1/4)
-		draw_text(screen, "score: "+str(score), 30, WIDTH // 2, HEIGHT // 2)
-		draw_text(screen, "Press Q", 20, WIDTH // 2, HEIGHT * 4/5)
-	else:
-		draw_text(screen, "score: "+str(score), 60, WIDTH // 2, HEIGHT * 1/3)
-		draw_text(screen, "Press Q", 20, WIDTH // 2, HEIGHT * 2/3)
+	with open("data.txt", mode="r") as file:
+		high_score = int(file.read())
+		if score > high_score:
+			draw_text(screen, "¡high score!", 60, WIDTH  // 2, HEIGHT * 1/4)
+			draw_text(screen, "score: "+str(score), 30, WIDTH // 2, HEIGHT // 2)
+			draw_text(screen, "Press Q", 20, WIDTH // 2, HEIGHT * 4/5)
+		else:
+			draw_text(screen, "score: "+str(score), 60, WIDTH // 2, HEIGHT * 1/3)
+			draw_text(screen, "Press Q", 20, WIDTH // 2, HEIGHT * 2/3)
 
 	pygame.display.flip()
 	waiting = True
@@ -158,14 +170,6 @@ def show_game_over_screen():
 # Cargar imagen de fondo
 background = pygame.transform.scale(pygame.image.load("img/fond.png").convert(),(800,550))
 
-### high score
-
-try:
-	highest_score = int(get_high_score())
-except:
-	highest_score = 0
-
-
 game_over = False
 running = True
 start = True
@@ -173,11 +177,15 @@ while running:
 	if game_over:
 
 		show_game_over_screen()
+		with open("data.txt", mode="w") as file:
+			if score > high_score:
+				high_score = score
+				file.write(str(score))
 		game_over = False
 		all_sprites = pygame.sprite.Group()
 		coins_list = pygame.sprite.Group()
 		diam_list = pygame.sprite.Group()
-
+		snake_list = pygame.sprite.Group()
 		player = Player()
 		all_sprites.add(player)
 		for i in range(8):
@@ -189,6 +197,9 @@ while running:
 			diam = Diam()
 			all_sprites.add(diam)
 			diam_list.add(diam)
+		snake = Snake()
+		all_sprites.add(snake)
+		snake_list.add(snake)
 
 		score = 0
 		
@@ -196,22 +207,24 @@ while running:
 	if start:
 		show_go_screen()
 		start = False
-		#game_over = False
 		all_sprites = pygame.sprite.Group()
 		coins_list = pygame.sprite.Group()
 		diam_list = pygame.sprite.Group()
-
+		snake_list = pygame.sprite.Group()
 		player = Player()
 		all_sprites.add(player)
 		for i in range(8):
 			coin = Coins()
 			all_sprites.add(coin)
 			coins_list.add(coin)
-		#all_sprites.add(player)
+
 		for i in range(4):
 			diam = Diam()
 			all_sprites.add(diam)
 			diam_list.add(diam)
+		snake = Snake()
+		all_sprites.add(snake)
+		snake_list.add(snake)
 
 		score = 0
 
@@ -220,10 +233,8 @@ while running:
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
 			running = False
-
-		#elif event.type == pygame.KEYDOWN:
-			#if event.key == pygame.K_f:
-				#player.shoot()
+			pygame.quit()
+			sys.exit()
 
 	if player.jumping:
 		player.rect.bottom -= player.Y_VELOCITY
@@ -234,6 +245,9 @@ while running:
 
 	all_sprites.update()
 
+	if player.hp <= 0:
+		game_over = True
+
 	if coin.rect.top > HEIGHT:
 		score -= 10
 	if diam.rect.top > HEIGHT:
@@ -242,9 +256,8 @@ while running:
 	#colisiones - coins - player
 	hits = pygame.sprite.spritecollide(player, coins_list, True)
 	for hit in hits:
+		player.hp += 1
 		score += 10
-		
-		
 		coin = Coins()
 		all_sprites.add(coin)
 		coins_list.add(coin)
@@ -252,13 +265,20 @@ while running:
 	#colisiones - diam - player
 	hits2 = pygame.sprite.spritecollide(player, diam_list, True )
 	for hit in hits2:
+		player.hp += 2
 		score += 100
-		
-		
 		diam = Diam()
 		all_sprites.add(diam)
 		diam_list.add(diam)
-		
+
+	#colisiones - snake - player
+	hits2 = pygame.sprite.spritecollide(player, snake_list, True )
+	for hit in hits2:
+		player.hp -= randint(10,30)
+		snake = Snake()
+		all_sprites.add(snake)
+		snake_list.add(snake)
+
 	"""
 	# dtención del juego en t = () en mlseg	
 	now = pygame.time.get_ticks()
@@ -271,8 +291,10 @@ while running:
 
 	#Marcador
 	draw_text(screen, str(score), 25, WIDTH // 2, 10)
+	draw_text(screen, str(high_score), 25, WIDTH * 3//4, 10)
 
 	# Escudo.
-	draw_shield_bar(screen, 5, 5, player.shield)
+	draw_hp_bar(screen, 5, 5, player.hp)
+	draw_hp_bar(screen, player.rect.x, player.rect.y - 10, player.hp)
 
 	pygame.display.flip()
